@@ -1,4 +1,4 @@
-v<div align="center">
+<div align="center">
 
 <img src="docs/logo.svg" alt="Lojão Veras" width="180">
 
