@@ -27,6 +27,13 @@
   const catalogFilter = $('#adminCatalogFilter');
   const visibleProductCount = $('#visibleProductCount');
   const mobileNewProductButton = $('#mobileNewProductButton');
+  const selectAllCheckbox = $('#selectAllProducts');
+  const bulkBar = $('#bulkBar');
+  const bulkCount = $('#bulkCount');
+  const bulkShowButton = $('#bulkShowButton');
+  const bulkHideButton = $('#bulkHideButton');
+  const bulkDeleteButton = $('#bulkDeleteButton');
+  const bulkCancelButton = $('#bulkCancelButton');
 
   const categories = {
     lighting: [
@@ -45,6 +52,7 @@
   let pendingImageBlob = null;
   let closeTimer = null;
   let lastFocusedElement = null;
+  const selectedIds = new Set();
 
   function feedback(element, message = '', type = '') {
     if (!element) return;
@@ -90,6 +98,8 @@
     logoutButton.hidden = true;
     mobileNewProductButton.hidden = true;
     adminState.textContent = 'Área administrativa';
+    selectedIds.clear();
+    if (bulkBar) bulkBar.hidden = true;
   }
 
   async function showDashboard(user) {
@@ -183,22 +193,51 @@
     return box;
   }
 
-  function renderProducts() {
+  function currentVisibleProducts() {
     const query = (searchInput.value || '').trim().toLocaleLowerCase('pt-BR');
     const filter = catalogFilter.value;
-    const visible = products.filter(product => {
+    return products.filter(product => {
       const catalogMatch = filter === 'todos' || product.catalog_type === filter;
       const searchMatch = !query || `${product.name} ${product.category_label || product.category}`.toLocaleLowerCase('pt-BR').includes(query);
       return catalogMatch && searchMatch;
     });
+  }
+
+  function updateBulkBar() {
+    const count = selectedIds.size;
+    if (bulkBar) bulkBar.hidden = count === 0;
+    if (bulkCount) bulkCount.textContent = `${count} ${count === 1 ? 'selecionado' : 'selecionados'}`;
+    if (selectAllCheckbox) {
+      const visible = currentVisibleProducts();
+      const visibleSelected = visible.filter(product => selectedIds.has(product.id)).length;
+      selectAllCheckbox.checked = visible.length > 0 && visibleSelected === visible.length;
+      selectAllCheckbox.indeterminate = visibleSelected > 0 && visibleSelected < visible.length;
+    }
+  }
+
+  function toggleSelection(id, checked) {
+    if (checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    updateBulkBar();
+  }
+
+  function clearSelection() {
+    selectedIds.clear();
+    updateBulkBar();
+    renderProducts();
+  }
+
+  function renderProducts() {
+    const visible = currentVisibleProducts();
 
     productList.replaceChildren();
     if (visibleProductCount) visibleProductCount.textContent = `${visible.length} ${visible.length === 1 ? 'produto' : 'produtos'}`;
     if (!visible.length) {
       const empty = document.createElement('p');
       empty.className = 'admin-empty-state';
-      empty.innerHTML = '<strong>Nenhum produto encontrado</strong><span>Tente ajustar a busca ou o filtro selecionado.</span>'; 
+      empty.innerHTML = '<strong>Nenhum produto encontrado</strong><span>Tente ajustar a busca ou o filtro selecionado.</span>';
       productList.appendChild(empty);
+      updateBulkBar();
       return;
     }
 
@@ -206,6 +245,19 @@
     visible.forEach(product => {
       const row = document.createElement('article');
       row.className = 'admin-product-row';
+
+      const selectLabel = document.createElement('label');
+      selectLabel.className = 'admin-row-select';
+      selectLabel.setAttribute('aria-label', `Selecionar ${product.name}`);
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = selectedIds.has(product.id);
+      checkbox.addEventListener('click', event => event.stopPropagation());
+      checkbox.addEventListener('change', () => toggleSelection(product.id, checkbox.checked));
+      const checkboxMark = document.createElement('i'); checkboxMark.setAttribute('aria-hidden', 'true');
+      selectLabel.append(checkbox, checkboxMark);
+      row.appendChild(selectLabel);
+
       row.appendChild(productThumb(product));
 
       const copy = document.createElement('div');
@@ -222,6 +274,7 @@
       fragment.appendChild(row);
     });
     productList.appendChild(fragment);
+    updateBulkBar();
   }
 
   async function loadProducts() {
@@ -231,6 +284,8 @@
       return;
     }
     products = data || [];
+    const knownIds = new Set(products.map(product => product.id));
+    selectedIds.forEach(id => { if (!knownIds.has(id)) selectedIds.delete(id); });
     updateMetrics();
     renderProducts();
   }
@@ -313,6 +368,47 @@
   $('#addPropertyButton').addEventListener('click', () => addPropertyRow());
   searchInput.addEventListener('input', renderProducts);
   catalogFilter.addEventListener('change', renderProducts);
+
+  selectAllCheckbox?.addEventListener('change', () => {
+    const visible = currentVisibleProducts();
+    if (selectAllCheckbox.checked) visible.forEach(product => selectedIds.add(product.id));
+    else visible.forEach(product => selectedIds.delete(product.id));
+    renderProducts();
+  });
+
+  bulkCancelButton?.addEventListener('click', clearSelection);
+
+  async function bulkSetActive(active) {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    const busyButton = active ? bulkShowButton : bulkHideButton;
+    busyButton.disabled = true;
+    const { error } = await client.from('products').update({ active, updated_at: new Date().toISOString() }).in('id', ids);
+    busyButton.disabled = false;
+    if (error) { alert(error.message || 'Não foi possível atualizar os produtos selecionados.'); return; }
+    await loadProducts();
+  }
+
+  bulkShowButton?.addEventListener('click', () => bulkSetActive(true));
+  bulkHideButton?.addEventListener('click', () => bulkSetActive(false));
+
+  bulkDeleteButton?.addEventListener('click', async () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    const confirmMessage = ids.length === 1
+      ? 'Excluir o produto selecionado? Essa ação não pode ser desfeita.'
+      : `Excluir os ${ids.length} produtos selecionados? Essa ação não pode ser desfeita.`;
+    if (!confirm(confirmMessage)) return;
+
+    bulkDeleteButton.disabled = true;
+    const imagePaths = products.filter(product => ids.includes(product.id) && product.image_path).map(product => product.image_path);
+    const { error } = await client.from('products').delete().in('id', ids);
+    bulkDeleteButton.disabled = false;
+    if (error) { alert(error.message || 'Não foi possível excluir os produtos selecionados.'); return; }
+    if (imagePaths.length) await client.storage.from('product-images').remove(imagePaths);
+    selectedIds.clear();
+    await loadProducts();
+  });
 
   function collectProperties() {
     return Array.from(propertyList.querySelectorAll('.property-row')).map(row => {

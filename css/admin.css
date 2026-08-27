@@ -170,10 +170,40 @@ input:focus,select:focus,textarea:focus{border-color:rgba(13,35,64,.42);backgrou
 .admin-list-meta>span:first-child{font-weight:600;color:var(--navy)}
 .admin-list-hint{opacity:.8}
 
+.admin-select-all{display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+.admin-select-all input{position:absolute;opacity:0;width:1px;height:1px}
+.admin-select-all i{width:18px;height:18px;flex:0 0 18px;border-radius:6px;border:1px solid var(--line-strong);background:#fff;position:relative;transition:background .18s var(--ease),border-color .18s var(--ease)}
+.admin-select-all i::after{content:"";position:absolute;inset:0;background:center/62% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");opacity:0;transition:opacity .15s}
+.admin-select-all input:checked+i,.admin-select-all input:indeterminate+i{background:var(--navy);border-color:var(--navy)}
+.admin-select-all input:checked+i::after,.admin-select-all input:indeterminate+i::after{opacity:1}
+.admin-select-all input:focus-visible+i{outline:3px solid rgba(13,35,64,.14);outline-offset:2px}
+
+.admin-bulk-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+  margin-top:12px;
+  padding:12px 16px;
+  border:1px solid rgba(13,35,64,.16);
+  border-radius:14px;
+  background:#eef2f6;
+  color:var(--navy);
+  font-size:.78rem;
+  font-weight:600;
+  animation:bulkBarIn .22s var(--ease);
+}
+@keyframes bulkBarIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.admin-bulk-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.admin-bulk-actions .admin-ghost,.admin-bulk-actions .admin-danger{min-height:38px;padding:8px 14px;font-size:.74rem}
+.admin-bulk-cancel{background:transparent;border-color:transparent;box-shadow:none;color:var(--muted)}
+.admin-bulk-cancel:hover{background:rgba(13,35,64,.06);border-color:transparent}
+
 .admin-product-list{display:grid;gap:10px;margin-top:12px}
 .admin-product-row{
   display:grid;
-  grid-template-columns:82px minmax(0,1fr) auto;
+  grid-template-columns:26px 82px minmax(0,1fr) auto;
   align-items:center;
   gap:17px;
   min-height:108px;
@@ -184,6 +214,13 @@ input:focus,select:focus,textarea:focus{border-color:rgba(13,35,64,.42);backgrou
   transition:transform .2s var(--ease),box-shadow .2s,border-color .2s,background .2s;
 }
 .admin-product-row:hover{transform:translateY(-1px);border-color:rgba(13,35,64,.18);background:#fff;box-shadow:0 14px 34px rgba(13,35,64,.07)}
+.admin-row-select{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;user-select:none}
+.admin-row-select input{position:absolute;opacity:0;width:1px;height:1px}
+.admin-row-select i{width:20px;height:20px;border-radius:6px;border:1px solid var(--line-strong);background:#fff;position:relative;transition:background .18s var(--ease),border-color .18s var(--ease)}
+.admin-row-select i::after{content:"";position:absolute;inset:0;background:center/62% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");opacity:0;transition:opacity .15s}
+.admin-row-select input:checked+i{background:var(--navy);border-color:var(--navy)}
+.admin-row-select input:checked+i::after{opacity:1}
+.admin-row-select input:focus-visible+i{outline:3px solid rgba(13,35,64,.14);outline-offset:2px}
 .admin-product-thumb{width:82px;height:82px;border-radius:14px;overflow:hidden;background:linear-gradient(145deg,#ecece7,#e4e7e9);display:grid;place-items:center;color:var(--muted);font-size:.62rem;text-align:center}
 .admin-product-thumb img{width:100%;height:100%;object-fit:cover;transition:transform .35s var(--ease)}
 .admin-product-row:hover .admin-product-thumb img{transform:scale(1.025)}
@@ -333,13 +370,18 @@ input:focus,select:focus,textarea:focus{border-color:rgba(13,35,64,.42);backgrou
   .admin-list-meta{padding:13px 1px 10px}
   .admin-list-hint{display:none}
 
-  .admin-product-row{grid-template-columns:70px minmax(0,1fr);gap:12px;min-height:0;padding:10px;border-radius:16px}
-  .admin-product-thumb{width:70px;height:70px;border-radius:12px}
+  .admin-product-row{grid-template-columns:22px 62px minmax(0,1fr);gap:10px;min-height:0;padding:10px;border-radius:16px}
+  .admin-product-thumb{width:62px;height:62px;border-radius:12px}
   .admin-product-copy strong{font-size:1.16rem}
   .admin-product-copy>span{font-size:.66rem}
   .admin-product-row>.admin-ghost{grid-column:1/-1;width:100%;min-height:42px}
   .admin-product-badges{gap:5px;margin-top:6px}
   .admin-badge{font-size:.53rem;padding:3px 6px}
+
+  .admin-list-meta{flex-wrap:wrap;gap:10px}
+  .admin-bulk-bar{flex-direction:column;align-items:stretch;gap:10px;padding:12px}
+  .admin-bulk-actions{justify-content:stretch}
+  .admin-bulk-actions .admin-ghost,.admin-bulk-actions .admin-danger{flex:1 1 auto}
 
   .admin-mobile-fab{
     position:fixed;

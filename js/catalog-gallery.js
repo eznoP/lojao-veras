@@ -190,13 +190,16 @@ async function safeRender(filter = activeFilter) {
 
     const galleryProps = {
       items: visible,
-      bend: 3,
+      bend: 0,
       textColor: '#0d2340',
       borderRadius: 0.055,
       font: '500 30px Jost',
       scrollSpeed: 1.45,
       scrollEase: 0.065,
-      onSelect: openProduct
+      onSelect: openProduct,
+      autoPlay: true,
+      autoPlaySpeed: 0.0045,
+      autoPlayResumeDelay: 2600
     };
 
     if (typeof ReactDOM.createRoot === 'function') {

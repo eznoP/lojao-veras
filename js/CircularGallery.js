@@ -379,7 +379,7 @@ class Media {
 }
 
 class App {
-  constructor(container, { items, bend, textColor = '#0d2340', borderRadius = 0, font = '500 28px Jost', scrollSpeed = 2, scrollEase = 0.05, mobile = false, onSelect } = {}) {
+  constructor(container, { items, bend, textColor = '#0d2340', borderRadius = 0, font = '500 28px Jost', scrollSpeed = 2, scrollEase = 0.05, mobile = false, onSelect, autoPlay = false, autoPlaySpeed = 0.0045, autoPlayResumeDelay = 2600 } = {}) {
     autoBind(this);
     this.container = container;
     this.bend = bend;
@@ -395,6 +395,11 @@ class App {
     this.dragSensitivity = mobile ? 0.042 : 0.025;
     this.scroll = { ease: mobile ? Math.min(scrollEase + 0.018, 0.09) : scrollEase, current: 0, target: 0, last: 0, position: 0 };
     this.onCheckDebounce = debounce(this.onCheck, mobile ? 110 : 160);
+    this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.autoPlay = Boolean(autoPlay) && !this.reducedMotion;
+    this.autoPlaySpeed = autoPlaySpeed;
+    this.autoPlayResumeDelay = autoPlayResumeDelay;
+    this.lastInteractionAt = 0;
     this.createRenderer();
     this.createCamera();
     this.createScene();
@@ -473,8 +478,13 @@ class App {
     this.onResize();
   }
 
+  markInteraction() {
+    this.lastInteractionAt = performance.now();
+  }
+
   onPointerDown(e) {
     if (e.button !== undefined && e.button !== 0) return;
+    this.markInteraction();
     this.isDown = true;
     this.pointerId = e.pointerId ?? null;
     this.gestureAxis = null;
@@ -619,6 +629,7 @@ class App {
 
   onWheel(e) {
     if (this.mobile) return;
+    this.markInteraction();
     const delta = e.deltaY || e.wheelDelta || e.detail;
     this.scroll.target += (delta > 0 ? this.scrollSpeed : -this.scrollSpeed) * 0.2;
     this.onCheckDebounce();
@@ -626,12 +637,16 @@ class App {
 
   step(direction) {
     if (!this.medias?.[0]) return;
+    this.markInteraction();
     const width = this.medias[0].width;
     this.scroll.target = Math.round(this.scroll.target / width) * width + width * direction;
     this.onCheckDebounce();
   }
 
   onKeyDown(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Home' || e.key === 'Enter' || e.key === ' ') {
+      this.markInteraction();
+    }
     switch (e.key) {
       case 'ArrowRight':
         e.preventDefault();
@@ -680,6 +695,9 @@ class App {
   }
 
   update() {
+    if (this.autoPlay && !this.isDown && !document.hidden && performance.now() - this.lastInteractionAt > this.autoPlayResumeDelay) {
+      this.scroll.target -= this.autoPlaySpeed;
+    }
     this.scroll.current = lerp(this.scroll.current, this.scroll.target, this.scroll.ease);
     const direction = this.scroll.current > this.scroll.last ? 'right' : 'left';
     if (this.medias) this.medias.forEach(media => media.update(this.scroll, direction));
@@ -752,11 +770,14 @@ export default function CircularGallery({
   font = '500 28px Jost',
   scrollSpeed = 2,
   scrollEase = 0.05,
-  onSelect
+  onSelect,
+  autoPlay = false,
+  autoPlaySpeed = 0.0045,
+  autoPlayResumeDelay = 2600
 }) {
   const containerRef = useRef(null);
   const appRef = useRef(null);
-  const latestConfigRef = useRef({ items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, onSelect });
+  const latestConfigRef = useRef({ items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, onSelect, autoPlay, autoPlaySpeed, autoPlayResumeDelay });
   const [status, setStatus] = useState('loading');
   const [mobile, setMobile] = useState(() =>
     typeof window !== 'undefined'
@@ -764,7 +785,7 @@ export default function CircularGallery({
       : false
   );
 
-  latestConfigRef.current = { items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, onSelect };
+  latestConfigRef.current = { items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, onSelect, autoPlay, autoPlaySpeed, autoPlayResumeDelay };
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 720px), (pointer: coarse)');
@@ -796,7 +817,10 @@ export default function CircularGallery({
           scrollSpeed: mobile ? Math.max(1.15, current.scrollSpeed * 0.72) : current.scrollSpeed,
           scrollEase: current.scrollEase,
           mobile,
-          onSelect: current.onSelect
+          onSelect: current.onSelect,
+          autoPlay: current.autoPlay,
+          autoPlaySpeed: mobile ? current.autoPlaySpeed * 0.75 : current.autoPlaySpeed,
+          autoPlayResumeDelay: current.autoPlayResumeDelay
         });
         appRef.current = app;
         setStatus('ready');

@@ -78,8 +78,21 @@
           </label>
         </div>
         <div class="admin-list-meta">
-          <span id="visibleProductCount">0 produtos</span>
-          <span class="admin-list-hint">Clique em editar para alterar um produto.</span>
+          <label class="admin-select-all">
+            <input id="selectAllProducts" type="checkbox" aria-label="Selecionar todos os produtos visíveis" />
+            <i aria-hidden="true"></i>
+            <span id="visibleProductCount">0 produtos</span>
+          </label>
+          <span class="admin-list-hint">Clique em editar para alterar um produto, ou marque vários para agir em massa.</span>
+        </div>
+        <div class="admin-bulk-bar" id="bulkBar" hidden>
+          <span id="bulkCount">0 selecionados</span>
+          <div class="admin-bulk-actions">
+            <button class="admin-ghost" id="bulkShowButton" type="button">Mostrar</button>
+            <button class="admin-ghost" id="bulkHideButton" type="button">Ocultar</button>
+            <button class="admin-danger" id="bulkDeleteButton" type="button">Excluir selecionados</button>
+            <button class="admin-ghost admin-bulk-cancel" id="bulkCancelButton" type="button">Cancelar</button>
+          </div>
         </div>
         <div class="admin-product-list" id="adminProductList" aria-live="polite"></div>
       </section>
